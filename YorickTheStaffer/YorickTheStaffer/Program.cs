@@ -45,9 +45,8 @@ namespace YorickTheStaffer
                 return;
             }
             Menu = new Menu ("YorickTheStaffer", "yorick", true);
-            var orbwalkerMenu = new Menu("Orbwalker", "yorick.orbwalker");
-            orbwalker = new Orbwalking.Orbwalker(orbwalkerMenu);
-            Menu.AddSubMenu(orbwalkerMenu);
+            orbwalker = new Orbwalking.Orbwalker(Menu.SubMenu("Orbwalking"));
+            Menu.AddSubMenu(new Menu("Orbwalking", "Orbwalking"));            
             TargetSelector.AddToMenu(Menu);
            // Drawing.OnDraw += OnDraw;
             Drawing.OnEndScene += Drawing_OnEndScene;
@@ -262,7 +261,7 @@ namespace YorickTheStaffer
 
                 //Sustain oriented harass ensures you use mana to heal back up instead of blowing it on dmg u cant use cuz low 
                 //Later I will add Logic Checks to see if you can all in soon tm kappa 
-                else omenOfPestilence();
+                else 
                 omenOfFamine();
         }
 
@@ -438,7 +437,7 @@ namespace YorickTheStaffer
             
             return dmg;
         }
-        //Thx Kortatu and Hoola
+        //Thx BestTuks and Hoola
         private static void Drawing_OnEndScene(EventArgs args)
         {
             foreach (var enemy in ObjectManager.Get<Obj_AI_Hero>()
