@@ -157,7 +157,7 @@ namespace yorick
             //I am done declaring spells and it was surprisingly easy XD
 
             // subscribe to Drawing event
-            Drawing.OnDraw += Game_OnGameDraw;
+            Drawing.OnDraw += Drawing_OnDraw;
 
             // subscribe to Update event gets called every game update around 10ms
             Game.OnUpdate += Game_OnGameUpdate;
@@ -166,13 +166,17 @@ namespace yorick
             Notifications.AddNotification("Lets have fun with Yorick the Staffer", 5000);
             // A metric fuckton of things have happened so far XD
         }
+
         private static void Drawing_OnDraw(EventArgs args)
         {
-            if (R.IsReady() && Player.Mana>= R.ManaCost)
+            if (R.IsReady() && Player.Mana >= R.ManaCost)
             {
-                Render.Circle.DrawCircle(Player.Position, 900,Color.Honeydew, 10);
+                Render.Circle.DrawCircle(Player.Position, R.Range, Color.Red, 10);
             }
         }
+
+     
+
         private static void Game_OnGameUpdate(EventArgs args)
         {
             if (Player.IsDead)
