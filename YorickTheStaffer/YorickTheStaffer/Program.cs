@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+
 using LeagueSharp;
 using LeagueSharp.Common;
 using System.Drawing;
@@ -10,7 +10,7 @@ using Color = System.Drawing.Color;
 using ItemData = LeagueSharp.Common.Data.ItemData;
 using YorickTheStafferHpBarIndicator;
 
-namespace YorickTheStaffer
+namespace yorick
 {
     class Program
     {
@@ -21,9 +21,37 @@ namespace YorickTheStaffer
         private static Orbwalking.Orbwalker orbwalker;
         private static Spell Q, W, E, R;
         private static readonly HpBarIndicator Indicator = new HpBarIndicator();
+        private static bool MuramanaOn;
+        private static bool allowMuramana;
         // Declaration Ends here XD
+        //Skillshot List 
+        private static string[] skillshots= new string []{"AhriSeduce",
+            "BandageToss",
+            "RocketGrab",
+            "BrandBlaze",
+            "BraumQ",
+            "InfectedCleaverMissileCast",
+            "EliseHumanE",
+            "JayceQAccel",
+            "JinxW",
+            "KalistaMysticShot",
+            "KarmaQ",
+            "KarmaQMantra",
+            "LeblancSoulShackle",
+            "LeblancSoulShackleM",
+            "BlindMonkQOne",
+            "LuxLightBinding",
+            "DarkBindingMissile",
+            "NautilusAnchorDrag",
+            "JavelinToss",
+            "RengarE",
+            "RyzeQ",
+            "TahmKenchQ",
+            "ThreshQ",
+            "XerathMageSpear"
+            };
 
-
+        public static List<YorickTheStaffer.Evade.Skillshot> DetectedSkillshots = new List<YorickTheStaffer.Evade.Skillshot>();
 
 
         static void Main(string[] args)
@@ -45,11 +73,13 @@ namespace YorickTheStaffer
                 return;
             }
             Menu = new Menu ("YorickTheStaffer", "yorick", true);
-            orbwalker = new Orbwalking.Orbwalker(Menu.SubMenu("Orbwalking"));
-            Menu.AddSubMenu(new Menu("Orbwalking", "Orbwalking"));            
             TargetSelector.AddToMenu(Menu);
-           // Drawing.OnDraw += OnDraw;
+            orbwalker = new Orbwalking.Orbwalker(Menu.SubMenu("Orbwalking"));          
+           
+            //Drawing.OnDraw += OnDraw;
             Drawing.OnEndScene += Drawing_OnEndScene;
+            YorickTheStaffer.Evade.SkillshotDetector.OnDetectSkillshot += OnDetectSkillshot;
+
 
 
             //I create very good menu shit that greatly increase script performance XD
@@ -89,13 +119,14 @@ namespace YorickTheStaffer
                 //Soon TM
                 // lasthitMenu.AddItem(new MenuItem("yorick.lasthit.priority", "Use E where possilbe").SetValue(true));
             }
+            Menu.AddSubMenu(lasthitMenu);
             var aacancelMenu = new Menu("Auto Attack Cancel Method", "yorick.aacancel");
             { 
                 aacancelMenu.AddItem(new MenuItem("yorick.aacancel.logic", "Chose your AA cancel Logic for Q XD").SetValue(new Slider(1, 1, 2)));
                 aacancelMenu.AddItem(new MenuItem("yorick.aacancel.explain", "1 is On Attack, 2 is Hoola, Hoola is recommended"));
             }
             Menu.AddSubMenu(aacancelMenu);
-        Menu.AddSubMenu(lasthitMenu);
+            
             var ultimateMenu = new Menu("Ultimate", "yorick.ultimate");
             {
                 ultimateMenu.AddItem(new MenuItem("yorick.ultimate.useonself", "Use R to safe you").SetValue(true));
@@ -103,7 +134,16 @@ namespace YorickTheStaffer
                 ultimateMenu.AddItem(new MenuItem("yorick.ultimate.adprio", "Prioritize ADC").SetValue(true));
             }
             Menu.AddSubMenu(ultimateMenu);
-
+            var goldmanMenu = new Menu("Goldman Features", "yorick.goldman");
+            {
+           
+                goldmanMenu.AddItem(new MenuItem("yorick.goldman.manamune", "Use Manamune like professional XD "));
+                goldmanMenu.AddItem(new MenuItem("yorick.goldman.cancerxd", "Use W to make enemy consider suicide XD").SetValue(new KeyBind("g".ToCharArray()[0], KeyBindType.Press)));
+                goldmanMenu.AddItem(new MenuItem("yorick.goldman.flee", "Never get caught again").SetValue(new KeyBind("A".ToCharArray()[0], KeyBindType.Press)));
+                goldmanMenu.AddItem(new MenuItem("yorick.goldman.dive", "Dive with W XD").SetValue(new KeyBind("T".ToCharArray()[0], KeyBindType.Press)));
+                
+            }
+            Menu.AddSubMenu(goldmanMenu);
             Menu.AddToMainMenu();
             //Luckily this is end of cancer menu declaration XD
 
@@ -141,7 +181,6 @@ namespace YorickTheStaffer
             if (orbwalker.ActiveMode == Orbwalking.OrbwalkingMode.Combo)
             {
                 combo();
-             
             }
 
             if (orbwalker.ActiveMode == Orbwalking.OrbwalkingMode.Mixed)
@@ -161,78 +200,216 @@ namespace YorickTheStaffer
                 }
                 
             }
-            //do people need this shit??????!!??!?!?!?!?!?!?!
+          
             if (orbwalker.ActiveMode == Orbwalking.OrbwalkingMode.LaneClear)
             {
-                if (Player.ManaPercent > Menu.Item("yorick.laneclear.manalimit").GetValue<Slider>().Value) { 
-                laneclear();
+                if (Player.ManaPercent > Menu.Item("yorick.laneclear.manalimit").GetValue<Slider>().Value)
+                { 
+                    laneclear();
+                }
             }
-        }
+
+            if (Menu.Item("yorick.goldman.flee").GetValue<KeyBind>().Active)
+            {
+                flee();
+                
+            }
+
+            if (Menu.Item("yorick.goldman.dive").GetValue<KeyBind>().Active)
+            {
+                
+               
+                 castWForDive();
+            }
+            if (Menu.Item("yorick.goldman.cancerxd").GetValue<KeyBind>().Active)
+            {
+                Player.IssueOrder(GameObjectOrder.MoveTo, Game.CursorPos);
+            }
+
             if (R.IsReady() == true  && Player.Mana>= R.ManaCost && Player.CountEnemiesInRange(1200) > 0 && Menu.Item("yorick.ultimate.notrust").GetValue<bool>()== false)
             {
                 UltTarget();
             }
-
+            checkMuramana();
             
+        }
+
+        private static void flee()
+        {
+            Player.IssueOrder(GameObjectOrder.MoveTo, Game.CursorPos);
+            var closestEnemy = Player.GetEnemiesInRange(1200).FirstOrDefault();
+            SharpDX.Vector3 enemypos = closestEnemy.Position;
+            switch (fleeCaseAnalysis(closestEnemy))
+            {
+                case"slownleech":
+                    if (W.IsReady()) W.Cast(Player.Position.Extend(enemypos,400));
+                    if (E.IsReady()) E.Cast(closestEnemy);
+                    
+                    break;
+                case "slowonly":
+                    if (W.IsReady()) W.Cast(Player.Position.Extend(enemypos, 400));
+                    
+                    break;
+                case "qforspeedup":
+                    if (Q.IsReady()) Q.Cast();
+                    
+                    break;
+                case "drowning":
+                    
+                    break;
+            }
+        }
+
+        private static string fleeCaseAnalysis(Obj_AI_Hero closestEnemy)
+        {
+            if (Player.Position.Distance(closestEnemy.Position)-(Player.BoundingRadius+closestEnemy.AttackRange)>300)
+            {
+                if (E.CanCast(closestEnemy)) return "slownleech"; 
+                return "slowonly";
+            }
+            if (Player.Position.Distance(closestEnemy.Position) < Player.AttackRange + closestEnemy.BoundingRadius)
+            {
+                return "qforspeedup";
+            }
+            else return "drowning";
+           
+        
         }
 
         private static void laneclear()
         {
-            if (Menu.Item("yorick.laneclear.lasthit").GetValue<bool>()== true){
+
+            jungle();
+         
+          
+            var allMinions = MinionManager.GetMinions(ObjectManager.Player.ServerPosition, 500, MinionTypes.All, MinionTeam.Enemy);
+            var rangedMinions = MinionManager.GetMinions(ObjectManager.Player.ServerPosition, 500, MinionTypes.Ranged,MinionTeam.Enemy);
+            if (allMinions != null)
+            {   if (Menu.Item("yorick.laneclear.lasthit").GetValue<bool>()== true){
                 lasthit();
             }
-          
-            var allMinions = MinionManager.GetMinions(ObjectManager.Player.ServerPosition, 550, MinionTypes.All);
-            var rangedMinions = MinionManager.GetMinions(ObjectManager.Player.ServerPosition, 550, MinionTypes.Ranged);
-            if (Menu.Item("yorick.laneclear.shove").GetValue<bool>()== true) {
-                if (Menu.Item("yorick.laneclear.lasthit").GetValue<bool>() == true)
+                if (Menu.Item("yorick.laneclear.shove").GetValue<bool>() == true)
                 {
-                    lasthit();
-                }
+                   
+                    if (rangedMinions.ToArray().Length >= 1 && W.IsReady() && Menu.Item("yorick.laneclear.usew").GetValue<bool>() == true)
+                    {
+                        var rangedPos = W.GetCircularFarmLocation(rangedMinions);
+                        W.Cast(rangedPos.Position);
+                    }
+                    if (rangedMinions.ToArray().Length == 1 && E.IsReady() && Menu.Item("yorick.laneclear.usee").GetValue<bool>() == true)
+                    {
 
-                if (rangedMinions.ToArray().Length >= 1 && W.IsReady() && Menu.Item("yorick.laneclear.usew").GetValue<bool>() == true)
-                {
-                    var rangedPos = W.GetCircularFarmLocation(rangedMinions);
-                    W.Cast(rangedPos.Position);
+                        E.Cast(rangedMinions[0]);
+                    }
+                    if (rangedMinions.ToArray().Length == 0 && W.IsReady() && allMinions.ToArray().Length >= 1 && Menu.Item("yorick.laneclear.usew").GetValue<bool>() == true)
+                    {
+                        var meleePos = W.GetCircularFarmLocation(allMinions);
+                        W.Cast(meleePos.Position);
+                    }
+                    if (allMinions.ToArray().Length == 1)
+                    {
+                        E.Cast(allMinions[0]);
+                    }
+                    if (allMinions.ToArray().Length == 0)
+                    {
+                        return;
+                    }
+
                 }
-                if (rangedMinions.ToArray().Length == 1 && E.IsReady() &&Menu.Item("yorick.laneclear.usee").GetValue<bool>() == true)
+                if (Menu.Item("yorick.laneclear.shove").GetValue<bool>() == false)
                 {
-                    
-                    E.Cast(rangedMinions[0]);
+                    if (Menu.Item("yorick.laneclear.lasthit").GetValue<bool>() == true)
+                    {
+                        lasthit();
+                    }
+                    if (Menu.Item("yorick.laneclear.usew").GetValue<bool>() == true && W.IsReady())
+                    {
+                        var retardpushpos = W.GetCircularFarmLocation(allMinions);
+                        W.Cast(retardpushpos.Position);
+                    }
+
+
                 }
-                if (rangedMinions.ToArray().Length == 0 && W.IsReady() && allMinions.ToArray().Length >= 1 && Menu.Item("yorick.laneclear.usew").GetValue<bool>() == true)
-                {
-                   var meleePos = W.GetCircularFarmLocation(allMinions);
-                    W.Cast(meleePos.Position);
-                }
-                if(allMinions.ToArray().Length == 1)
-                {
-                    E.Cast(allMinions[0]);
-                }
-                if (allMinions.ToArray().Length == 0)
-                {
-                    return;
-                }
-                
             }
-            if (Menu.Item("yorick.laneclear.shove").GetValue<bool>() == false)
-            {
-                if (Menu.Item("yorick.laneclear.lasthit").GetValue<bool>() == true)
-                {
-                    lasthit();
-                }
-                if (Menu.Item("yorick.laneclear.usew").GetValue<bool>() == true && W.IsReady())
-                {
-                    var retardpushpos = W.GetCircularFarmLocation(allMinions);
-                    W.Cast(retardpushpos.Position);
-                }
-              
-
-            }
-
+            
 
         }
+        //adding jungleclear 
+        private static void jungle()
+        {
+            var jungleminion = MinionManager.GetMinions(Player.ServerPosition, E.Range, MinionTypes.All, MinionTeam.Neutral, MinionOrderTypes.MaxHealth).FirstOrDefault();
+            if (jungleminion == null) return;
+            var wjungleminions = MinionManager.GetMinions(Player.ServerPosition,500, MinionTypes.All, MinionTeam.Neutral);
+            var wcastposition = W.GetCircularFarmLocation(wjungleminions);
+            if (W.IsReady() && Player.Mana> E.ManaCost+Q.ManaCost+W.ManaCost)          
+            W.Cast(jungleminion.Position);
+            if (E.IsReady()&& E.ManaCost < Player.Mana)
+            E.Cast(jungleminion);
+        }
+        //start of divehelper logic
+        private static float minionTankCheck (Obj_AI_Turret enemytower)
+        {
+            float timetanked = 0;
+            if (enemytower == null) {return timetanked; }
+            var allyminionsundertower = ObjectManager.Get<Obj_AI_Minion>().Where(x => x.Distance(enemytower)<900 && !x.IsDead && x.IsAlly);
+            if (allyminionsundertower == null) return timetanked;
+            
+            foreach (var minion in allyminionsundertower)
+            {
+                float shotssurvived=(float) (minion.Health / enemytower.GetAutoAttackDamage(minion));
+                if (shotssurvived < 1) shotssurvived = 1;
+                timetanked +=shotssurvived*enemytower.AttackSpeedMod;
+            }
+            float timetankedXD = timetanked;
+            timetanked = 0;
+            return timetankedXD;
+            
+        }
+        //Used for fleemode
+        private static bool minionsUnderTower(Obj_AI_Turret enemytower)
+        {
+            if (enemytower.IsWindingUp && !enemytower.IsAttackingPlayer) return true;
+            else return false;
+        }
 
+        private static void castWForDive()
+        {
+            Player.IssueOrder(GameObjectOrder.MoveTo, Game.CursorPos);
+            var enemytower = ObjectManager.Get<Obj_AI_Turret>().Where(x => x.Distance(Player.Position) < 1100 && x.IsEnemy && x.Health> 0).FirstOrDefault();
+            if (!W.IsReady() || W.ManaCost > Player.Mana)   return;
+            if (minionTankCheck(enemytower) < 2.5)
+            {
+                W.Cast(Player.Position.Extend(enemytower.Position, 500));
+            }
+            else return;            
+        }
+        //end of divehelper logic
+
+        //start of muramana logic 
+        //Useless atm but will be obscenely useful soon TM
+        private static double dmgPerMana()
+        {
+            var targetm = TargetSelector.GetTarget(600, TargetSelector.DamageType.Magical, true, HeroManager.Enemies.Where<Obj_AI_Hero>(x=> x.Distance(Player)<1000));
+            var targetp = TargetSelector.GetTarget(600, TargetSelector.DamageType.Physical, true, HeroManager.Enemies.Where<Obj_AI_Hero>(x => x.Distance(Player) < 1000));
+            double dmgCombo = Q.GetDamage(targetp)+W.GetDamage(targetm)+E.GetDamage(targetm);
+            double manafloor = Q.ManaCost * 3 + W.ManaCost * 2 + E.ManaCost * 2;
+            var muramanadmgpermana = MuramanaDmg(0, Player.Mana, ref manafloor) / Player.Mana - manafloor;
+            return 0;
+        }
+
+
+       //Recursive method make script 300% more performant and ensure smoothest insec and wardjump around                                                                                                                                                      I am fully aware that this baby here could have been solved by just taking the difference between manaretain and player.Mana and multiplying by 0.06 but recursive methods increase awesomeness of the script and I can put it in the topic to meme/use for marketing. Also this will be used in a secret SoonTm Feature XD
+        static double MuramanaDmg(double dmg, double mana, ref double manafloor)
+        {
+            mana -= mana * 0.03;
+            dmg += mana * 0.06;
+            if (mana <= manafloor)
+            {
+                return mana;
+            }
+            return MuramanaDmg(dmg, mana, ref manafloor);
+        }
+        //end of muramana logic XD
         private static void Game_OnGameDraw(EventArgs args)
         {
            
@@ -240,8 +417,11 @@ namespace YorickTheStaffer
 
         private static void combo()
         {
-            omenOfPestilence();
-            omenOfFamine();
+            
+          
+          
+           omenOfPestilence();
+           omenOfFamine();
             
            
         }
@@ -268,7 +448,7 @@ namespace YorickTheStaffer
 
 
     }
-        //I can add freeze option to this but it will not work this well also yoricks ghouls dont really allow for freezing lmao XD 
+        //I can add freeze option to this but it will not work  well also yoricks ghouls dont really allow for freezing lmao XD 
           
         private static void lasthit()
         {
@@ -290,7 +470,7 @@ namespace YorickTheStaffer
             {
                 foreach (var minion in lasthitbyw)
                 {
-                    W.CastIfHitchanceEquals(minion, HitChance.High);
+                    W.Cast(minion);
                     break;
 
                 }
@@ -333,6 +513,42 @@ namespace YorickTheStaffer
                  }
             }
         }
+
+        private static void OnDetectSkillshot(YorickTheStaffer.Evade.Skillshot skillshot)
+        {
+            if (skillshot.Unit.Team == Player.Team) return;
+            if (!W.IsReady() && !E.IsReady() ||!Menu.Item("yorick.goldman.cancerxd").GetValue<KeyBind>().Active) return;
+            var Blockchamps = HeroManager.Allies.Where<Obj_AI_Hero>(x => x.Distance(Player) < 600 - x.BoundingRadius -20);
+            foreach (var champ in Blockchamps)
+            {
+
+                if (skillshots.Contains(skillshot.SpellData.SpellName)&& skillshot.IsDanger(champ.Position.To2D()))
+                {
+                    castEForSS(champ, skillshot);
+                    break;
+                }                               
+            }  
+        }
+
+        private static void castWForSS(Obj_AI_Hero champ, YorickTheStaffer.Evade.Skillshot skillshot)
+        {
+                W.Cast(champ.Position.Extend(skillshot.Start.To3D(), champ.BoundingRadius)+20);      
+        }
+
+        private static void castEForSS(Obj_AI_Hero champ, YorickTheStaffer.Evade.Skillshot skillshot)
+        {
+            var enemyminions = ObjectManager.Get<Obj_AI_Minion>().Where(x => !x.IsAlly && x.Health > 40 && x.IsValidTarget(550, false, Player.Position));
+            foreach (var minion in enemyminions)
+            {
+                if (skillshot.IsDanger(Player.Position.To2D().Extend(minion.Position.To2D(), Player.Distance(minion.Position)+ 50)))
+                {
+                    E.Cast(minion);
+                    return;
+                }
+            }
+            castWForSS(champ, skillshot);
+        }
+
 
         private static void DoCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
@@ -384,11 +600,40 @@ namespace YorickTheStaffer
                 Items.UseItem(3748);
             }
         }
-        // Activate Muramana soon tm
+        
+        private static void checkMuramana()
+        {
+                if (Player.Mana > 400 && orbwalker.ActiveMode == Orbwalking.OrbwalkingMode.Combo)
+                {
+                    allowMuramana = true;
+                ToggleMuramana();
+                }
+                else allowMuramana = false;
+                ToggleMuramana();
+        }
+
         private static void ToggleMuramana()
         {
-            if (Items.HasItem(3042)&& Items.CanUseItem(3042)) { }
+            if (Items.HasItem(3042)&& Items.CanUseItem(3042))
+            {
+                
+                if (MuramanaOn == false && allowMuramana == true)
+                {
+                    Items.UseItem(3042);
+                    MuramanaOn = true;
+                    return;
+                }
+
+                if (allowMuramana == false && MuramanaOn == true)
+                {
+                    Items.UseItem(3042);
+                    MuramanaOn = false;
+                    return;
+                }
+            }
+            
         }
+       
         //Titanic Hydra AA Reset
         private static void OnCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
@@ -494,6 +739,7 @@ namespace YorickTheStaffer
                     if (hero.Health < hero.MaxHealth * 0.2)
                     {
                         R.Cast(hero);
+                        break;
                     }
                    
                 }
@@ -507,4 +753,6 @@ namespace YorickTheStaffer
             }
         }
     }
+
+
 }

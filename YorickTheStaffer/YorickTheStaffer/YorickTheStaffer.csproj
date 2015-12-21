@@ -36,6 +36,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="clipper_library">
+      <HintPath>C:\Users\fHsm\Desktop\LeagueSharp\System\clipper_library.dll</HintPath>
+    </Reference>
     <Reference Include="LeagueSharp">
       <HintPath>C:\Users\fHsm\Desktop\LeagueSharp\System\LeagueSharp.dll</HintPath>
     </Reference>
@@ -59,12 +62,27 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Evade\Collision.cs" />
+    <Compile Include="Evade\EarlyEvade.cs" />
+    <Compile Include="Evade\EvadeSpellData.cs" />
+    <Compile Include="Evade\EvadeSpellDatabase.cs" />
+    <Compile Include="Evade\Geometry.cs" />
+    <Compile Include="Evade\Skillshot.cs" />
+    <Compile Include="Evade\SpellData.cs" />
+    <Compile Include="Evade\SpellDatabase.cs" />
+    <Compile Include="Evade\Utils.cs" />
     <Compile Include="HpBarIndicator.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Evade\SkillshotDetector.cs" />
+    <Compile Include="Evade\Config.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <Content Include="Evade\References\clipper_Lib.dll" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
